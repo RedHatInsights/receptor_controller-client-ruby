@@ -1,8 +1,8 @@
 require "receptor_controller/client"
 
 RSpec.describe ReceptorController::Client do
-  let(:external_tenant) {'0000001'}
-  let(:organization_id) {'000001'}
+  let(:external_tenant) { '0000001' }
+  let(:organization_id) { '000001' }
   let(:identity) do
     {"x-rh-identity" => Base64.strict_encode64({"identity" => {"account_number" => external_tenant, "user" => {"is_org_admin" => true}, "internal" => {"org_id" => organization_id}}}.to_json)}
   end
@@ -21,9 +21,9 @@ RSpec.describe ReceptorController::Client do
       config.controller_host   = receptor_host
     end
   end
-  let(:satellite_uid) {'1234567890'}
+  let(:satellite_uid) { '1234567890' }
 
-  subject {described_class.new(:config => receptor_config)}
+  subject { described_class.new(:config => receptor_config) }
 
   before do
     subject.identity_header = identity
@@ -56,59 +56,20 @@ RSpec.describe ReceptorController::Client do
     end
   end
 
+  describe "#directive" do
+    it "creates blocking or non-blocking directive" do
+      %i[blocking non_blocking].each do |type|
+        directive = subject.directive(nil,
+                                      nil,
+                                      :payload   => nil,
+                                      :directive => 'xxx',
+                                      :type      => type)
+        klass     = type == :blocking ? ReceptorController::Client::DirectiveBlocking : ReceptorController::Client::DirectiveNonBlocking
+        expect(directive).to be_a_kind_of(klass)
+      end
+    end
+  end
+
   describe "#send_directive" do
-    let(:caller) {double("Caller object")}
-    let(:payload) {{'satellite_instance_id' => satellite_uid.to_s}.to_json}
-    let(:directive) {'receptor_satellite:health_check'}
-
-    it "makes POST /job request to receptor, registers received message ID and returns it" do
-      response  = {"id" => '1234'}
-
-      stub_request(:post, "#{receptor_scheme}://#{receptor_host}/job")
-        .with(:body    => {:account   => external_tenant,
-                           :recipient => receptor_node,
-                           :payload   => payload,
-                           :directive => directive}.to_json,
-              :headers => headers)
-        .to_return(:status => 200, :body => response.to_json, :headers => {})
-
-      expect(subject.send(:response_worker))
-        .to receive(:register_message)
-              .with(response['id'], caller, :response_callback => :response_received, :timeout_callback => :response_timeout)
-
-      expect(subject.send_directive(external_tenant, receptor_node,
-                                    :payload         => payload,
-                                    :directive       => directive,
-                                    :response_object => caller)).to eq(response['id'])
-    end
-
-    it "makes POST /job request to receptor, doesn't register message and returns nil in case of error" do
-      stub_request(:post, "#{receptor_scheme}://#{receptor_host}/job")
-        .with(:body    => {:account   => external_tenant,
-                           :recipient => receptor_node,
-                           :payload   => payload,
-                           :directive => directive}.to_json,
-              :headers => headers)
-        .to_return(:status => 401, :body => {"errors" => [{"status" => 401, "detail" => "Unauthorized"}]}.to_json, :headers => {})
-
-      expect(subject.send(:response_worker)).not_to receive(:register_message)
-
-      expect(subject.send_directive(external_tenant, receptor_node,
-                                    :payload         => payload,
-                                    :directive       => directive,
-                                    :response_object => caller)).to be_nil
-
-    end
-
-    it "makes a POST request and returns disconnected if receptor unavailable" do
-      allow(Faraday).to receive(:post).and_raise(Faraday::ConnectionFailed, "Failed to open TCP connection to #{receptor_host}")
-
-      expect(subject.send(:response_worker)).not_to receive(:register_message)
-
-      expect(subject.send_directive(external_tenant, receptor_node,
-                                    :payload         => payload,
-                                    :directive       => directive,
-                                    :response_object => caller)).to be_nil
-    end
   end
 end

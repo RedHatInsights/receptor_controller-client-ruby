@@ -21,14 +21,13 @@ Gem::Specification.new do |s|
 
   s.add_runtime_dependency 'activesupport', '~> 5.2.2'
   s.add_runtime_dependency 'concurrent-ruby', '~> 1.1', '>= 1.1.6'
-  s.add_runtime_dependency 'faraday', '~> 1.0'
+  s.add_runtime_dependency 'faraday'
   s.add_runtime_dependency 'json', '~> 2.1', '>= 2.1.0'
   s.add_runtime_dependency 'manageiq-loggers', '~> 0.4.0', '>= 0.4.2'
   s.add_runtime_dependency 'manageiq-messaging', '~> 0.1.5'
 
-  s.add_development_dependency 'bundler', '~> 2.0'
-  s.add_development_dependency 'rspec', '~> 3.6', '>= 3.6.0'
-  s.add_development_dependency 'webmock', '~> 1.24', '>= 1.24.3'
+  s.add_development_dependency 'rspec'
+  s.add_development_dependency 'webmock'
 
   s.files         = `find *`.split("\n").uniq.sort.select { |f| !f.empty? }
   s.test_files    = `find spec/*`.split("\n")
