@@ -69,7 +69,4 @@ RSpec.describe ReceptorController::Client do
       end
     end
   end
-
-  describe "#send_directive" do
-  end
 end

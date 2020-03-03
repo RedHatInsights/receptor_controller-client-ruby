@@ -1,5 +1,5 @@
 require "receptor_controller/client/directive_non_blocking"
-require "pry-byebug"
+
 RSpec.describe ReceptorController::Client::DirectiveNonBlocking do
   let(:external_tenant) { '0000001' }
   let(:organization_id) { '000001' }
@@ -69,7 +69,7 @@ RSpec.describe ReceptorController::Client::DirectiveNonBlocking do
   end
 
   context "callbacks" do
-    it "calls success blocks" do
+    it "calls success/eof blocks" do
       response_id = '1234'
 
       # Callbacks
@@ -81,6 +81,9 @@ RSpec.describe ReceptorController::Client::DirectiveNonBlocking do
         .on_success do |msg_id, payload|
           result[:second] = {:id => msg_id, :payload => payload}
         end
+        .on_eof do |msg_id|
+          result[:eof] = {:id => msg_id}
+        end
 
       # HTTP request
       stub_request(:post, "#{receptor_scheme}://#{receptor_host}/job")
@@ -90,17 +93,26 @@ RSpec.describe ReceptorController::Client::DirectiveNonBlocking do
 
       subject.call
 
-      # Kafka response
-      expect(subject).to receive(:response_success).and_call_original
+      # Kafka response - 'response' type
+      expect(subject).to receive(:response_success).twice.and_call_original
       message_type, payload = 'response', 'Testing payload'
       response_payload = {'code' => 0, 'in_response_to' => response_id, 'message_type' => message_type, 'payload' => payload}
       response = double
       allow(response).to receive(:payload).and_return(response_payload.to_json)
       subject.response_worker.send(:process_message, response)
 
+      # Kafka response - 'eof' type
+      message_type = 'eof'
+      response_payload = {'code' => 0, 'in_response_to' => response_id, 'message_type' => message_type, 'payload' => nil}
+      allow(response).to receive(:payload).and_return(response_payload.to_json)
+      subject.response_worker.send(:process_message, response)
+
+
       # Result containing both "on_success" blocks
       block_result = {:id => response_id, :payload => payload}
-      expect(result).to eq(:first => block_result, :second => block_result)
+      expect(result).to eq(:first  => block_result,
+                           :second => block_result,
+                           :eof    => {:id => response_id})
     end
   end
 end
