@@ -25,6 +25,9 @@ module ReceptorController
         nil
       end
     rescue Faraday::Error => e
+      logger.error(receptor_log_msg("Directive #{name} failed. POST /job error", account, node_id, e))
+      nil
+    rescue => e
       logger.error(receptor_log_msg("Directive #{name} failed", account, node_id, e))
       nil
     end
@@ -57,7 +60,6 @@ module ReceptorController
       end
     end
 
-    # TODO: update args in satellite's availability check!
     def response_error(msg_id, response_code, response)
       @error_callbacks.each { |block| block.call(msg_id, response_code, response) }
     end
