@@ -20,8 +20,8 @@ module ReceptorController
         return if started.value
 
         started.value         = true
-        workers[:maintenance] = Thread.new { check_timeouts }
-        workers[:listener]    = Thread.new { listen }
+        workers[:maintenance] = Thread.new { check_timeouts while started.value }
+        workers[:listener]    = Thread.new { listen while started.value }
       end
     end
 
@@ -60,6 +60,8 @@ module ReceptorController
       client.subscribe_topic(queue_opts) do |message|
         process_message(message)
       end
+    rescue => err
+      logger.error("Exception in kafka listener: #{err}\n#{err.backtrace.join("\n")}")
     ensure
       client&.close
     end
@@ -114,6 +116,8 @@ module ReceptorController
 
         sleep(config.response_timeout_poll_time)
       end
+    rescue => err
+      logger.error("Exception in maintenance worker: #{err}\n#{err.backtrace.join("\n")}")
     end
 
     # No persist_ref here, because all instances (pods) needs to receive kafka message
