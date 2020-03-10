@@ -57,8 +57,9 @@ module ReceptorController
       end
     end
 
-    def response_error(msg_id, response_code)
-      @error_callbacks.each { |block| block.call(msg_id, response_code) }
+    # TODO: update args in satellite's availability check!
+    def response_error(msg_id, response_code, response)
+      @error_callbacks.each { |block| block.call(msg_id, response_code, response) }
     end
 
     def response_timeout(msg_id)

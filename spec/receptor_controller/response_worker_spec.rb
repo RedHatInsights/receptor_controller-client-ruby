@@ -8,7 +8,7 @@ RSpec.describe ReceptorController::Client::ResponseWorker do
   subject { described_class.new(config, logger) }
 
   before do
-    allow(logger).to receive(:error)
+    allow(logger).to receive_messages(%i[debug info warn error fatal])
     allow(config).to receive_messages(:response_timeout => 0, :response_timeout_poll_time => 0)
   end
 
@@ -51,7 +51,7 @@ RSpec.describe ReceptorController::Client::ResponseWorker do
       let(:payload) { {'code' => 1, 'in_response_to' => message_id, 'message_type' => 'response', 'payload' => response_body} }
 
       it "and calls response_error" do
-        expect(receiver).to receive(:error).with(message_id, payload['code'])
+        expect(receiver).to receive(:error).with(message_id, payload['code'], payload['payload'])
 
         subject.send(:process_message, message)
       end
