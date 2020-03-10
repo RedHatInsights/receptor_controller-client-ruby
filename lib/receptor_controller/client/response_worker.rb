@@ -44,6 +44,7 @@ module ReceptorController
     # @param response_callback [Symbol] name of receiver's method processing responses
     # @param timeout_callback [Symbol] name of receiver's method processing timeout [optional]
     def register_message(msg_id, receiver, response_callback: :response_received, timeout_callback: :response_timeout)
+      logger.debug("Receptor response: registering message #{msg_id}")
       registered_messages[msg_id] = {:receiver => receiver, :response_callback => response_callback, :timeout_callback => timeout_callback, :registered_at => Time.now.utc}
     end
 
@@ -76,6 +77,7 @@ module ReceptorController
 
         if message_id
           if (callbacks = registered_messages[message_id]).present?
+            logger.debug("Receptor response: processing message #{message_id} (#{response})")
             registered_messages.delete(message_id) if message_type == 'eof'
             # Callback to sender
             callbacks[:receiver].send(callbacks[:response_callback], message_id, message_type, response['payload'])
