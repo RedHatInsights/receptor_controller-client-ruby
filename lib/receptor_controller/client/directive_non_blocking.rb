@@ -1,6 +1,30 @@
 require "receptor_controller/client/directive"
 
 module ReceptorController
+  # Non-blocking directive for requests through POST /job
+  # Directive's call returns either message ID or nil
+  #
+  # Callback blocks can be specified for handling responses
+  # @example:
+  #         receiver = <object with methods below>
+  #         directive
+  #           .on_success do |msg_id, response|
+  #             receiver.process_response(msg_id, response)
+  #           end
+  #           .on_error do |msg_id, code, response|
+  #             receiver.process_error(msg_id, code, response)
+  #           end
+  #           .on_timeout do |msg_id|
+  #             receiver.process_timeout(msg_id)
+  #           end
+  #           .on_eof do |msg_id|
+  #             receiver.process_eof(msg_id)
+  #           end
+  #           .on_eof do |msg_id|
+  #             logger.debug("[#{msg_id}] EOF message received")
+  #           end
+  #
+  #         directive.call
   class Client::DirectiveNonBlocking < Client::Directive
     def initialize(name:, account:, node_id:, payload:, client:)
       super

@@ -1,6 +1,19 @@
 require "concurrent"
 
 module ReceptorController
+  # ResponseWorker is listening on Kafka topic platform.receptor-controller.responses (@see Configuration.queue_topic)
+  # It asynchronously receives responses requested by POST /job to receptor controller.
+  # Request and response is paired by message ID (response of POST /job and 'in_response_to' value in kafka response here)
+  #
+  # Successful responses are at least two:
+  # * 1+ of 'response' type, containing data
+  # * 1 of 'eof' type, signalizing end of transmission
+  #
+  # Registered messages without response are removed after timeout (Configuration.response_timeout)
+  #
+  # All type of responses/timeout can be sent to registered callbacks (@see :register_message)
+  #
+  # Use "start" and "stop" methods to start/stop listening on Kafka
   class Client::ResponseWorker
     attr_reader :started
     alias_method :started?, :started
