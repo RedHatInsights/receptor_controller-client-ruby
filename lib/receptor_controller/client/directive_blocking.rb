@@ -12,6 +12,7 @@ module ReceptorController
       self.response_waiting = ConditionVariable.new
       self.response_data = nil
       self.response_exception = nil
+      self.pages = {}
     end
 
     def call(body = default_body)
@@ -39,12 +40,12 @@ module ReceptorController
       end
     end
 
-    # TODO: Review when future plugins with more "response" messages come
-    def response_success(msg_id, message_type, response)
+    def response_success(msg_id, message_type, serial, response)
       response_lock.synchronize do
         if message_type == MESSAGE_TYPE_RESPONSE
-          self.response_data = response
+          pages[serial] = {:body => JSON.parse(response["body"]), :status => response["status"]}
         elsif message_type == MESSAGE_TYPE_EOF
+          join_pages
           response_waiting.signal
         else
           self.response_exception = ReceptorController::Client::UnknownResponseTypeError.new("#{log_message_common}[MSG: #{msg_id}]")
@@ -53,25 +54,41 @@ module ReceptorController
       end
     end
 
-    def response_error(msg_id, response_code, err_message)
+    def response_error(msg_id, response_code, serial, err_message)
       response_lock.synchronize do
+        self.pages = {}
         self.response_data = nil
-        self.response_exception = ReceptorController::Client::ResponseError.new("#{err_message} (code: #{response_code}) (#{log_message_common}) [MSG: #{msg_id}]")
+        self.response_exception = ReceptorController::Client::ResponseError.new("#{err_message} serial: #{serial}, code: #{response_code}, #{log_message_common} [MSG: #{msg_id}]")
         response_waiting.signal
       end
     end
 
     def response_timeout(msg_id)
       response_lock.synchronize do
+        self.pages = {}
         self.response_data = nil
         self.response_exception = ReceptorController::Client::ResponseTimeoutError.new("Timeout (#{log_message_common}) [MSG: #{msg_id}]")
         response_waiting.signal
       end
     end
 
+    def join_pages
+      data = pages.keys.sort.each_with_object({}) do |num, acc|
+        # If we have pages of data
+        next(pages[num]) unless pages[num][:body].key?("results")
+
+        acc["count"].nil? ? acc["count"] = pages[num][:body]["count"] : acc["count"] += pages[num][:body]["count"]
+        acc["results"].nil? ? acc["results"] = pages[num][:body]["results"] : acc["results"] << (pages[num][:body]["results"])
+      end
+
+      status = pages.values.all? { |page| page[:status] == 200 }
+
+      self.response_data = {"body" => data.to_json, "status" => status ? 200 : 0}
+    end
+
     private
 
-    attr_accessor :response_data, :response_exception, :response_lock, :response_waiting
+    attr_accessor :response_data, :response_exception, :response_lock, :response_waiting, :pages
 
     def connection
       @connection ||= Faraday.new(config.controller_url, :headers => client.headers) do |c|

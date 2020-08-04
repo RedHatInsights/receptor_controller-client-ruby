@@ -98,7 +98,7 @@ module ReceptorController
       response = JSON.parse(message.payload)
 
       if (message_id = response['in_response_to'])
-        logger.debug("Receptor response for message #{message_id}: serial: #{response["serial"]}, type: #{response['message_type']}, payload: #{response['payload'] || "n/a"}")
+        # logger.debug("Receptor response for message #{message_id}: serial: #{response["serial"]}, type: #{response['message_type']}, payload: #{response['payload'] || "n/a"}")
         if (callbacks = registered_messages[message_id]).present?
           # Reset last_checked_at to avoid timeout in multi-response messages
           reset_last_checked_at(callbacks)
@@ -109,22 +109,23 @@ module ReceptorController
             #
             message_type = response['message_type'] # "response" (with data) or "eof" (without data)
             payload = response['payload']
+            serial = response['serial']
             callbacks[:received_msgs] ? callbacks[:received_msgs] += 1 : callbacks[:received_msgs] = 1
 
             case message_type
             when EOF
               # Store how many messages are needed to be received for this request
-              callbacks[:total_msgs] = response["serial"]
+              callbacks[:total_msgs] = serial
             when RESPONSE
               payload = unpack_payload(payload) if payload.kind_of?(String)
-              callbacks[:msg_size] ? callbacks[:msg_size] += payload.size : callbacks[:msg_size] = payload.size
-              callbacks[:receiver].send(callbacks[:response_callback], message_id, message_type, payload)
+              callbacks[:msg_size] ? callbacks[:msg_size] += payload["body"].size : callbacks[:msg_size] = payload["body"].size
+              callbacks[:receiver].send(callbacks[:response_callback], message_id, message_type, serial, payload)
             end
 
             # We received all the messages, complete the message.
             if callbacks[:received_msgs] == callbacks[:total_msgs]
               registered_messages.delete(message_id)
-              callbacks[:receiver].send(callbacks[:response_callback], message_id, EOF, payload)
+              callbacks[:receiver].send(callbacks[:response_callback], message_id, EOF, serial, payload)
               logger.debug("Receptor Message #{message_id} complete, total bytes: #{callbacks[:msg_size]}")
             end
 
@@ -137,7 +138,7 @@ module ReceptorController
 
             logger.error("Receptor response: ERROR | message #{message_id} (#{response})")
 
-            callbacks[:receiver].send(callbacks[:error_callback], message_id, response['code'], response['payload'])
+            callbacks[:receiver].send(callbacks[:error_callback], message_id, response['code'], response['serial'], response['payload'])
           end
         elsif ENV["LOG_ALL_RECEPTOR_MESSAGES"]&.to_i != 0
           # noop, it's not error if not registered, can be processed by another pod

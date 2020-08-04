@@ -4,6 +4,7 @@ RSpec.describe ReceptorController::Client::ResponseWorker do
   let(:receiver) { double('receiver') }
   let(:logger) { double('logger') }
   let(:config) { double('config') }
+  let(:serial) { 1 }
 
   subject { described_class.new(config, logger) }
 
@@ -25,7 +26,7 @@ RSpec.describe ReceptorController::Client::ResponseWorker do
   describe "#process_message" do
     let(:message) { double('message') }
     let(:message_id) { '1234' }
-    let(:response_body) { 'Test response' }
+    let(:response_body) { {"body" => 'Test response'} }
     let(:payload) { {} }
     let(:receiver) { double('receiver') }
 
@@ -43,10 +44,10 @@ RSpec.describe ReceptorController::Client::ResponseWorker do
       end
 
       context "receives successful response" do
-        let(:payload) { {'code' => 0, 'in_response_to' => message_id, 'message_type' => 'response', 'payload' => response_body} }
+        let(:payload) { {'code' => 0, 'in_response_to' => message_id, 'message_type' => 'response', 'payload' => response_body, 'serial' => serial} }
 
         it "and calls response_callback " do
-          expect(receiver).to receive(:success).with(message_id, payload['message_type'], payload['payload'])
+          expect(receiver).to receive(:success).with(message_id, payload['message_type'], serial, payload['payload'])
 
           subject.send(:process_message, message)
         end
@@ -61,10 +62,10 @@ RSpec.describe ReceptorController::Client::ResponseWorker do
       end
 
       context "receives error response" do
-        let(:payload) { {'code' => 1, 'in_response_to' => message_id, 'message_type' => 'response', 'payload' => response_body} }
+        let(:payload) { {'code' => 1, 'in_response_to' => message_id, 'message_type' => 'response', 'payload' => response_body, 'serial' => serial} }
 
         it "and calls response_error" do
-          expect(receiver).to receive(:error).with(message_id, payload['code'], payload['payload'])
+          expect(receiver).to receive(:error).with(message_id, payload['code'], serial, payload['payload'])
 
           subject.send(:process_message, message)
         end
@@ -119,13 +120,13 @@ RSpec.describe ReceptorController::Client::ResponseWorker do
       context "receives gzip compressed response" do
         let(:original_response_body) { {'status' => 200, 'body' => {'count' => 0, 'results' => []}} }
         let(:response_body) { Base64.encode64(::Zlib.gzip(original_response_body.to_json)) }
-        let(:payload) { {'code' => 0, 'in_response_to' => message_id, 'message_type' => 'response', 'payload' => response_body} }
+        let(:payload) { {'code' => 0, 'in_response_to' => message_id, 'message_type' => 'response', 'payload' => response_body, 'serial' => serial} }
 
         it "calls response callback" do
           expect(subject).to receive(:gzipped?).and_call_original
           expect(subject).to receive(:unpack_payload).and_call_original
 
-          expect(receiver).to receive(:success).with(message_id, payload['message_type'], original_response_body)
+          expect(receiver).to receive(:success).with(message_id, payload['message_type'], serial, original_response_body)
 
           subject.send(:process_message, message)
         end
@@ -138,7 +139,7 @@ RSpec.describe ReceptorController::Client::ResponseWorker do
         expect(message).not_to receive(:ack)
       end
 
-      let(:payload) { {'code' => 0, 'in_response_to' => message_id, 'message_type' => 'response', 'payload' => response_body} }
+      let(:payload) { {'code' => 0, 'in_response_to' => message_id, 'message_type' => 'response', 'payload' => response_body, 'serial' => serial} }
 
       it "doesn't call ack on message" do
         subject.send(:process_message, message)
