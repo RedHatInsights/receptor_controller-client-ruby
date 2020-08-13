@@ -45,10 +45,11 @@ module ReceptorController
       response = Faraday.post(config.job_url, body.to_json, client.headers)
       if response.success?
         msg_id = JSON.parse(response.body)['id']
+        href_slug = JSON.parse(body[:payload])['href_slug']
 
         # registers message id for kafka responses
         response_worker.register_message(msg_id, self)
-        logger.debug("Receptor response [#{ReceptorController::Client::Configuration.default.queue_persist_ref}]: registering message #{msg_id}, href_slug: #{body[:payload]["href_slug"]}")
+        logger.debug("Receptor response [#{ReceptorController::Client::Configuration.default.queue_persist_ref}]: registering message #{msg_id}, href_slug: #{href_slug}")
 
         msg_id
       else
