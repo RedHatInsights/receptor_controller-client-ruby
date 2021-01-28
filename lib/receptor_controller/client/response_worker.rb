@@ -105,8 +105,10 @@ module ReceptorController
       response = JSON.parse(message.payload)
 
       if (message_id = response['in_response_to'])
-        logger.debug(response_log("Received message #{message_id}: serial: #{response["serial"]}, type: #{response['message_type']}, payload: #{response['payload'] || "n/a"}"))
-        if (callbacks = registered_messages[message_id]).present?
+        callbacks = registered_messages[message_id]
+        log_received_message(callbacks, message_id, response)
+
+        if callbacks.present?
           # Reset last_checked_at to avoid timeout in multi-response messages
           reset_last_checked_at(callbacks)
 
@@ -243,6 +245,13 @@ module ReceptorController
       }
     end
 
+    def log_received_message(callbacks, message_id, response)
+      log_all = (ENV["LOG_ALL_RECEPTOR_MESSAGES"] || 0).to_i != 0
+      if log_all || (!log_all && callbacks.present?)
+        logger.debug(response_log("Received message #{message_id}: serial: #{response["serial"]}, type: #{response['message_type']}, payload: #{response['payload'] || "n/a"}"))
+      end
+    end
+    
     def response_log(message)
       "Receptor Response [#{queue_opts[:persist_ref]}]: #{message}"
     end
