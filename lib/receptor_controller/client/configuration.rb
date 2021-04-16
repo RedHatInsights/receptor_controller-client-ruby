@@ -1,5 +1,8 @@
 module ReceptorController
   class Client::Configuration
+
+    # x-rh-receptor-controller-client-id header for authentication with receptor controller (replaces x-rh-identity)
+    attr_reader :client_id_header
     # Scheme of cloud receptor controller
     attr_reader :controller_scheme
     # Host name of cloud receptor controller
@@ -10,7 +13,7 @@ module ReceptorController
     # Path to sending directive requests
     attr_accessor :job_path
 
-    # x-rh-rbac-psk header for authentication with receptor controller (replaces x-rh-identity)
+    # x-rh-receptor-controller-psk header for authentication with receptor controller (replaces x-rh-identity)
     attr_accessor :pre_shared_key
 
     # Kafka message auto-ack (default false)
@@ -38,6 +41,7 @@ module ReceptorController
       @connection_status_path = '/connection/status'
       @job_path               = '/job'
       @pre_shared_key         = nil
+      @client_id_header       = 'topological-inventory'
 
       @queue_auto_ack    = true
       @queue_host        = nil

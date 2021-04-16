@@ -83,7 +83,7 @@ module ReceptorController
       if config.pre_shared_key.present? && account.present?
         {
           'x-rh-receptor-controller-psk'       => config.pre_shared_key,
-          'x-rh-receptor-controller-client-id' => "topological-inventory",
+          'x-rh-receptor-controller-client-id' => config.client_id_header,
           'x-rh-receptor-controller-account'   => account
         }
       else
