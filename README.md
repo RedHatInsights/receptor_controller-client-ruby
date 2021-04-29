@@ -1,6 +1,6 @@
 # ReceptorController::Client
 
-[![Build Status](https://travis-ci.org/RedHatInsights/receptor_controller-client-ruby.svg?branch=master)](https://travis-ci.org/RedHatInsights/receptor_controller-client-ruby)
+[![Build Status](https://travis-ci.com/RedHatInsights/receptor_controller-client-ruby.svg?branch=master)](https://travis-ci.com/RedHatInsights/receptor_controller-client-ruby)
 [![Maintainability](https://api.codeclimate.com/v1/badges/cb9e7859bcda536345f8/maintainability)](https://codeclimate.com/github/RedHatInsights/receptor_controller-client-ruby/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/cb9e7859bcda536345f8/test_coverage)](https://codeclimate.com/github/RedHatInsights/receptor_controller-client-ruby/test_coverage)
 [![security](https://hakiri.io/github/RedHatInsights/receptor_controller-client-ruby/master.svg)](https://hakiri.io/github/RedHatInsights/receptor_controller-client-ruby/master)
