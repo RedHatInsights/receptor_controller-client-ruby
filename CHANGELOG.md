@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### [0.0.10]
+- Configurable Receptor Client ID header fix #41
+
 ## [0.0.9]
 - Fix rubocop yaml #39
 - Configurable Receptor Client ID header #38
@@ -38,7 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added extra logging for messages
 
-[Unreleased]: https://github.com/RedHatInsights/receptor_controller-client-ruby/compare/v0.0.9.freeze...HEAD
+[Unreleased]: https://github.com/RedHatInsights/receptor_controller-client-ruby/compare/v0.0.10.freeze...HEAD
+[0.0.10]: https://github.com/RedHatInsights/receptor_controller-client-ruby/releases/tag/v0.0.10.freeze
 [0.0.9]: https://github.com/RedHatInsights/receptor_controller-client-ruby/releases/tag/v0.0.9.freeze
 [0.0.8]: https://github.com/RedHatInsights/receptor_controller-client-ruby/releases/tag/v0.0.8.freeze
 [0.0.7]: https://github.com/RedHatInsights/receptor_controller-client-ruby/releases/tag/v0.0.7.freeze
