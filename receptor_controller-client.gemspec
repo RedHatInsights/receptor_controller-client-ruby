@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
   s.license     = "Apache-2.0"
   s.required_ruby_version = ">= 2.5"
 
-  s.add_runtime_dependency 'activesupport', '~> 5.2'
+  s.add_runtime_dependency 'activesupport', '~> 5.2', '>= 5.2.4.3'
   s.add_runtime_dependency 'concurrent-ruby', '~> 1.1', '>= 1.1.6'
   s.add_runtime_dependency 'faraday', '~> 1.0'
   s.add_runtime_dependency 'json', '~> 2.3', '>= 2.3.0'

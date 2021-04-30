@@ -1,13 +1,13 @@
 module ReceptorController
   class Client::Configuration
 
-    # x-rh-receptor-controller-client-id header for authentication with receptor controller (replaces x-rh-identity)
-    attr_reader :client_id_header
     # Scheme of cloud receptor controller
     attr_reader :controller_scheme
     # Host name of cloud receptor controller
     attr_reader :controller_host
 
+    # x-rh-receptor-controller-client-id header for authentication with receptor controller (replaces x-rh-identity)
+    attr_accessor :client_id_header
     # Path to connection status requests
     attr_accessor :connection_status_path
     # Path to sending directive requests
