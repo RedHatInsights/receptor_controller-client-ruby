@@ -3,6 +3,9 @@ require 'base64'
 require "concurrent"
 require 'stringio'
 require 'zlib'
+require 'rdkafka'
+require 'manageiq/messaging/kafka/common'
+require 'clowder-common-ruby'
 
 module ReceptorController
   # ResponseWorker is listening on Kafka topic platform.receptor-controller.responses (@see Configuration.queue_topic)
@@ -19,6 +22,9 @@ module ReceptorController
   #
   # Use "start" and "stop" methods to start/stop listening on Kafka
   class Client::ResponseWorker
+    include ManageIQ::Messaging::Kafka::Common
+    RECEPTOR_RESPONSES_TOPIC = "platform.receptor-controller.responses".freeze
+
     EOF = "eof".freeze
     RESPONSE = "response".freeze
     INITIALIZATION_TIMEOUT = 20
@@ -45,8 +51,6 @@ module ReceptorController
 
       lock.synchronize do
         return if started.value
-
-        default_messaging_opts # Thread-safe init
 
         started.value         = true
         workers[:maintenance] = Thread.new { check_timeouts while started.value }
@@ -89,11 +93,14 @@ module ReceptorController
     attr_writer :started
 
     def listen
-      # Open a connection to the messaging service
-      client = ManageIQ::Messaging::Client.open(default_messaging_opts)
+      client = Rdkafka::Config.new(queue_opts).consumer
+      topic = kafka_topic(RECEPTOR_RESPONSES_TOPIC)
 
-      client.subscribe_topic(queue_opts) do |message|
-        process_message(message)
+      client.subscribe(topic)
+      client.each do |message|
+        self.send(:process_topic_message, client, topic, message) do |parsed|
+          process_message(parsed)
+        end
       end
     rescue => err
       logger.error(response_log("Exception in kafka listener: #{err}\n#{err.backtrace.join("\n")}"))
@@ -163,11 +170,9 @@ module ReceptorController
       logger.error(response_log("Failed to parse Kafka response (#{e.message})\n#{message.payload}"))
     rescue => e
       logger.error(response_log("#{e}\n#{e.backtrace.join("\n")}"))
-    ensure
-      message.ack unless config.queue_auto_ack
     end
 
-    def check_timeouts(threshold = config.response_timeout)
+    def check_timeouts(threshold = 2.minutes)
       expired = []
       #
       # STEP 1 Collect expired messages
@@ -190,7 +195,7 @@ module ReceptorController
         end
       end
 
-      sleep(config.response_timeout_poll_time)
+      sleep(10)
     rescue => err
       logger.error("Exception in maintenance worker: #{err}\n#{err.backtrace.join("\n")}")
     end
@@ -222,16 +227,30 @@ module ReceptorController
       end
     end
 
-    # No persist_ref here, because all instances (pods) needs to receive kafka message
-    # TODO: temporary changed to unique persist_ref
     def queue_opts
-      return @queue_opts if @queue_opts
+       # parsing the clowder config file and building the rdkafka args, docs here: https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
 
-      @queue_opts               = {:service  => config.queue_topic,
-                                   :auto_ack => config.queue_auto_ack}
-      @queue_opts[:max_bytes]   = config.queue_max_bytes if config.queue_max_bytes
-      @queue_opts[:persist_ref] = ENV['HOSTNAME']
-      @queue_opts
+      # the default params, overriding what we need to in the tap block...
+      {
+        :"group.id" => ENV['HOSTNAME'].presence || SecureRandom.hex(4),
+        :"client.id" => ENV['HOSTNAME'].presence || SecureRandom.hex(4),
+        :"enable.auto.commit" => true
+      }.tap do |params|
+        if ClowderCommonRuby::Config.clowder_enabled?
+          broker = config.kafka.brokers[0]
+          params[:"bootstrap.servers"] = "#{broker.hostname}:#{broker.port}"
+
+          if broker.authtype == "sasl" && broker.respond_to?(:sasl) && broker.sasl.present?
+            params[:"sasl.username"] = broker.sasl.username
+            params[:"sasl.password"] = broker.sasl.password
+            params[:"sasl.mechanism"] = broker.sasl.saslMechanism
+            params[:"security.protocol"] = broker.sasl.securityProtocol
+            params[:"ssl.certificate.pem"] = broker.cacert if broker.respond_to?(:cacert) && broker.cacert.present?
+          end
+        else
+          params[:"bootstrap.servers"] = "#{ENV["QUEUE_HOST"]}:#{ENV["QUEUE_PORT"]}"
+        end
+      end
     end
 
     def default_messaging_opts
@@ -251,9 +270,21 @@ module ReceptorController
         logger.debug(response_log("Received message #{message_id}: serial: #{response["serial"]}, type: #{response['message_type']}, payload: #{response['payload'] || "n/a"}"))
       end
     end
-    
+
     def response_log(message)
       "Receptor Response [#{queue_opts[:persist_ref]}]: #{message}"
+    end
+
+    def config
+      @config ||= ClowderCommonRuby::Config.load if ClowderCommonRuby::Config.clowder_enabled?
+    end
+
+    def kafka_topic(name)
+      if ClowderCommonRuby::Config.clowder_enabled?
+        config.kafka.topics.find {|t| t.requestedName == name}&.name || name
+      else
+        name
+      end
     end
   end
 end
