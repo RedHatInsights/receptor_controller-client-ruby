@@ -237,7 +237,7 @@ module ReceptorController
         :"enable.auto.commit" => true
       }.tap do |params|
         if ClowderCommonRuby::Config.clowder_enabled?
-          broker = config.kafka.brokers[0]
+          broker = clowderconfig.kafka.brokers[0]
           params[:"bootstrap.servers"] = "#{broker.hostname}:#{broker.port}"
 
           if broker.authtype == "sasl" && broker.respond_to?(:sasl) && broker.sasl.present?
@@ -275,13 +275,13 @@ module ReceptorController
       "Receptor Response [#{queue_opts[:persist_ref]}]: #{message}"
     end
 
-    def config
-      @config ||= ClowderCommonRuby::Config.load if ClowderCommonRuby::Config.clowder_enabled?
+    def clowderconfig
+      @clowderconfig ||= ClowderCommonRuby::Config.load if ClowderCommonRuby::Config.clowder_enabled?
     end
 
     def kafka_topic(name)
       if ClowderCommonRuby::Config.clowder_enabled?
-        config.kafka.topics.find {|t| t.requestedName == name}&.name || name
+        clowderconfig.kafka.topics.find {|t| t.requestedName == name}&.name || name
       else
         name
       end
